@@ -182,6 +182,22 @@ def build_parser() -> argparse.ArgumentParser:
             "the model's native resolution."
         )
     )
+    parser.add_argument(
+        '--stain_norm', type=str, default='none', choices=['none', 'macenko', 'reinhard'],
+        help=(
+            "Optional H&E stain normalization applied to every patch before the patch encoder "
+            "(requires `pip install torchstain`). Features are written to "
+            "`features_<patch_encoder>_<method>` so raw and normalized features coexist. "
+            "Defaults to none."
+        )
+    )
+    parser.add_argument(
+        '--stain_target', type=str, default=None,
+        help=(
+            "Reference RGB image whose stain statistics are the normalization target. "
+            "Required for reinhard; optional for macenko (defaults to the Macenko paper's reference)."
+        )
+    )
     parser.add_argument('--slide_encoder', type=str, default=None, 
                         choices=slide_encoder_registry.keys(), 
                         help='Slide encoder to use')
@@ -324,6 +340,11 @@ def run_task(processor: Processor, args: argparse.Namespace) -> None:
                     )
                 encoder_kwargs['target_img_size'] = patch_encoder_img_size
             encoder = encoder_factory(args.patch_encoder, weights_path=args.patch_encoder_ckpt_path, **encoder_kwargs)
+            if getattr(args, 'stain_norm', 'none') not in (None, 'none'):
+                from trident.stain_normalization import StainNormalizer, apply_stain_normalization
+                normalizer = StainNormalizer(args.stain_norm, target=getattr(args, 'stain_target', None))
+                apply_stain_normalization(encoder, normalizer)
+                print(f"Stain normalization enabled: {normalizer}; features -> features_{encoder.enc_name}")
             mag_str = f"{float(args.mag):g}"
             processor.run_patch_feature_extraction_job(
                 coords_dir=args.coords_dir or f'{mag_str}x_{args.patch_size}px_{args.overlap}px_overlap',
@@ -416,9 +437,12 @@ def get_pending_slides(args: argparse.Namespace) -> List[str]:
         if args.slide_encoder:
             feat_subdirs = [f'slide_features_{args.slide_encoder}']
         else:
+            feat_name = args.patch_encoder
+            if getattr(args, 'stain_norm', 'none') not in (None, 'none'):
+                feat_name = f'{args.patch_encoder}_{args.stain_norm}'
             feat_subdirs = [
-                f'features_{args.patch_encoder}',
-                f'patch_features_{args.patch_encoder}',
+                f'features_{feat_name}',
+                f'patch_features_{feat_name}',
             ]
 
         for feat_sub in feat_subdirs:
