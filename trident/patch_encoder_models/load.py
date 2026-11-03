@@ -18,7 +18,7 @@ This file contains 20+ pretrained patch encoders, all loadable via the encoder_f
 # `_resolve_target_img_size` for the validation rules.
 RESIZE_SUPPORTED_PATCH_ENCODERS = frozenset({
     # Category A: dynamic_img_size already enabled on the timm backbone.
-    "uni_v1", "uni_v2", "virchow", "virchow2", "virchow2-cls",
+    "uni_v1", "uni_v2", "digepath", "virchow", "virchow2", "virchow2-cls",
     "kaiko-vitb8", "kaiko-vitb16", "kaiko-vits8", "kaiko-vits16", "kaiko-vitl14",
     # Category B: dynamic_img_size enabled as part of this feature.
     "gigapath", "gigapath-flash", "hoptimus0", "hoptimus1", "gpfm", "lunit-vits8", "h0-mini",
@@ -69,6 +69,7 @@ def encoder_factory(model_name: str, **kwargs) -> torch.nn.Module:
         - "conch_v15"
         - "uni_v1"
         - "uni_v2"
+        - "digepath"
         - "ctranspath"
         - "phikon"
         - "phikon_v2"
@@ -840,6 +841,81 @@ class UNIInferenceEncoder(BasePatchEncoder):
         precision = torch.float16
         return model, eval_transform, precision
     
+
+class DigePathInferenceEncoder(BasePatchEncoder):
+    """DigiPath ViT-L/16 patch encoder (1024-dimensional output)."""
+
+    def __init__(self, **build_kwargs):
+        super().__init__(**build_kwargs)
+
+    def _build(self, target_img_size=None):
+        import timm
+        from torchvision import transforms
+
+        self.enc_name = "digepath"
+        weights_path = self._get_weights_path()
+        img_size = _resolve_target_img_size(
+            self.enc_name,
+            target_img_size,
+            default_img_size=224,
+            patch_size=16,
+        )
+
+        timm_kwargs = {
+            # Build at the checkpoint's native resolution so strict local
+            # weight loading also works when target_img_size is overridden.
+            "img_size": 224,
+            "patch_size": 16,
+            "init_values": 1e-5,
+            "num_classes": 0,
+            "dynamic_img_size": True,
+        }
+
+        if weights_path:
+            try:
+                model = timm.create_model(
+                    "vit_large_patch16_224",
+                    pretrained=False,
+                    checkpoint_path=weights_path,
+                    **timm_kwargs,
+                )
+            except Exception as error:
+                traceback.print_exc()
+                raise RuntimeError(
+                    f"Failed to create DigiPath from local checkpoint at '{weights_path}'. "
+                    "The checkpoint must contain weights for timm's "
+                    "vit_large_patch16_224 architecture."
+                ) from error
+        else:
+            self.ensure_has_internet(self.enc_name)
+            try:
+                model = timm.create_model(
+                    "hf-hub:xtxx/Digepath",
+                    pretrained=True,
+                    **timm_kwargs,
+                )
+            except Exception as error:
+                traceback.print_exc()
+                raise RuntimeError(
+                    "Failed to download DigiPath. Make sure access to "
+                    "https://huggingface.co/xtxx/Digepath has been granted and "
+                    "that Hugging Face authentication is configured."
+                ) from error
+
+        eval_transform = transforms.Compose(
+            [
+                transforms.Resize(img_size),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=(0.485, 0.456, 0.406),
+                    std=(0.229, 0.224, 0.225),
+                ),
+            ]
+        )
+
+        self.embedding_dim = 1024
+        return model, eval_transform, torch.float32
+
 
 class UNIv2InferenceEncoder(BasePatchEncoder):
 
@@ -2063,6 +2139,7 @@ encoder_registry = {
     "conch_v15": Conchv15InferenceEncoder,
     "uni_v1": UNIInferenceEncoder,
     "uni_v2": UNIv2InferenceEncoder,
+    "digepath": DigePathInferenceEncoder,
     "ctranspath": CTransPathInferenceEncoder,
     "phikon": PhikonInferenceEncoder,
     "phikon_v2": Phikonv2InferenceEncoder,

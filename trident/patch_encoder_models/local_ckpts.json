@@ -1,15 +1,15 @@
 {
     "conch_v1": "",
-    "uni_v1": "",
+    "uni_v1": "/home/xy/.cache/huggingface/hub/models--MahmoodLab--uni/snapshots/b55a5ec6cade1a39edfe6534189a9b8ca7a022f0/pytorch_model.bin",
     "uni_v2": "",
     "ctranspath": "",
     "phikon": "",
     "resnet50": "",
     "keep": "",
-    "gigapath": "",
+    "gigapath": "/home/yingx/projects/GIST/datasets/datasets/checkpoints/models--prov-gigapath--prov-gigapath/snapshots/64f9e26c15019f2d4f6d9113c6822f88bb16b01b/pytorch_model.bin",
     "gigapath-flash": "",
     "virchow": "",
-    "virchow2": "",
+    "virchow2": "/home/yingx/projects/GIST/datasets/datasets/checkpoints/models--paige-ai--Virchow2/snapshots/3158645804b69e3f3bc4439d4116edddf0840a72/pytorch_model.bin",
     "hoptimus0": "",
     "hoptimus1": "",
     "h0-mini": "",
@@ -30,5 +30,5 @@
     "genbio-pathfm": "",
     "gemma4-e4b": "",
     "gemma4-26b": "",
-    "custom_encoder": ""
+    "digepath": "/home/yingx/projects/GIST/datasets/datasets/checkpoints/models--xtxx--Digepath/snapshots/bf624f6ee39f42c55110b42c60dad17f0700755c/model.safetensors"
 }

@@ -1,5 +1,5 @@
 {
-    "hest": "",
+    "hest": "/home/xy/.cache/trident/deeplabv3_seg_v4.ckpt",
     "grandqc": "",
     "grandqc_artifact": ""
 }
